@@ -241,7 +241,7 @@ public class VRRaycaster : MonoBehaviour
                     hitPointCursorPrefabInstance.transform.localPosition = new Vector3(hitPointCursorPrefabInstance.transform.localPosition.x, 
                                                                                         hitPointCursorPrefabInstance.transform.localPosition.y, 
                                                                                         -(hitObject.position.z*hitObject.localScale.z)/2);
-                    Debug.Log(anglePointPrefabInstance.)
+            //        Debug.Log(anglePointPrefabInstance.)
 
                     Debug.Log("Creating bezier Line point 2 ");
                     Debug.Log("Creating bezier Point in direction of the GameObject and the controller");
