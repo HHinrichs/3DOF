@@ -15,7 +15,7 @@ public class VRRaycaster : MonoBehaviour
     public LayerMask excludeLayers;
     public VRRaycaster.Callback raycastHitCallback;
     public int interpolationPoints;
-
+    public bool enableRotation = false;
     private Transform hitObject;
     private BezierLineRenderer bezierRenderer;
     public GameObject anglePointPrefab;
@@ -48,6 +48,7 @@ public class VRRaycaster : MonoBehaviour
             GameObject right = GameObject.Find("RightHandAnchor");
             if (right != null)
             {
+                Debug.Log("Found left hand anchor");
                 rightHandAnchor = right.transform;
             }
         }
@@ -87,7 +88,7 @@ public class VRRaycaster : MonoBehaviour
         lineRenderer.startWidth = 0.017f;
         lineRenderer.endWidth = 0.017f;
         Transform pointer = Pointer;
-        bezierRenderer = new BezierLineRenderer(lineRenderer, interpolationPoints, pointer);
+        bezierRenderer = new BezierLineRenderer(lineRenderer, interpolationPoints);
     }
 
     Transform Pointer
@@ -119,7 +120,10 @@ public class VRRaycaster : MonoBehaviour
     bool tached = false;
     void Update()
     {
-        Transform pointer = Pointer;
+        //this is just for editor testing
+        Transform pointer = this.transform;
+        // Transform pointer = Pointer;
+
         if (pointer == null)
         {
             return;
@@ -223,11 +227,11 @@ public class VRRaycaster : MonoBehaviour
                 {
                     lineRenderer.SetPosition(1, hit.point);
                 }
-
-             //           if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null))
-                if (tached == false)
+                if(Input.GetKeyDown("e"))
+              //          if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null))
+           //    if (tached == false)
                 {
-                    Debug.Log("Creating sprint anchor...");
+                    Debug.Log("Creating spring anchor...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
                     anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.transform.position, Quaternion.identity);
@@ -245,13 +249,13 @@ public class VRRaycaster : MonoBehaviour
 
                     Debug.Log("Creating bezier Line point 2 ");
                     Debug.Log("Creating bezier Point in direction of the GameObject and the controller");
-           //         Instantiate(new GameObject("BezierPoint2"), )
+                    //         Instantiate(new GameObject("BezierPoint2"), )
                     // maxRayDistance = hit.distance;
-                    
-                    lineRenderer.SetPosition(0, new Vector3(0f, 0f, 0f));
-                    lineRenderer.SetPosition(1, new Vector3(0f, 0f, 0f));
+
+  //                  bezierRenderer.setPositionCounts();
+   //                 lineRenderer.SetPosition(0, transform.position);
+   //                 lineRenderer.SetPosition(1, transform.position);
                     tached = true;
-                    bezierRenderer.setPositionCounts();
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
                 }
 
@@ -263,22 +267,31 @@ public class VRRaycaster : MonoBehaviour
         }
         else
         {
-            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform);
-      //      hitObjectRigidbody.rotation = this.transform.rotation;
-            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null))
+            // bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform);
+            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitObject, pointer);
+
+            //   hitObjectRigidbody.rotation = this.transform.rotation;
+            if (Input.GetKeyDown("e"))
+     //           if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null))
             {
                 Debug.Log("Removing anchor from object...");
                 objectIsAttached = false;
                 hitObject = null;
-                anglePointPrefabInstance.GetComponent<SpringJoint>().connectedBody = null;
-                anglePointPrefabInstance.transform.parent = null;
-                anglePointPrefabInstance = null;
-                hitPointCursorPrefabInstance.transform.parent = null;
+                Destroy(anglePointPrefabInstance);
                 Destroy(hitPointCursorPrefabInstance);
                 lineRenderer.positionCount = 2;
             }
         }
         #endregion
+    }
+
+    void FixedUpdate()
+    {
+
+        if(hitObjectRigidbody != null && enableRotation)
+        {
+            hitObjectRigidbody.rotation = this.transform.rotation;
+        }
     }
 }
 
@@ -289,17 +302,15 @@ public class BezierLineRenderer
     bool cubic = false;
 
     [Header("Use 3 Points for x^2 functions")]
-    public Transform point0;
-    public Transform point1;
-    public Transform point2;
+    private Transform point0;
+    private Transform point1;
+    private Transform point2;
     int interpolationPoints;
     private Vector3[] positions;
-    Transform pointer;
     public bool isSet = false;
 
-    public BezierLineRenderer(LineRenderer _lineRenderer, int _interpolationPoints, Transform _pointer)
+    public BezierLineRenderer(LineRenderer _lineRenderer, int _interpolationPoints)
     {
-        pointer = _pointer;
         lineRenderer = _lineRenderer;
         interpolationPoints = _interpolationPoints;
         positions = new Vector3[interpolationPoints];
@@ -311,16 +322,20 @@ public class BezierLineRenderer
         lineRenderer.positionCount = interpolationPoints;
     }
 
-    public void DrawLinearCurve(Transform point0, Transform point1, Transform point2)
+    public void DrawLinearCurve(Transform _point0, Transform _point1, Transform _point2, Transform _pointer)
     {
-        positions[0] = pointer.position;
+        point0 = _point0;
+        point1 = _point1;
+        point2 = _point2;
+        positions[0] = _pointer.position;
         //    Debug.Log("Updating Bezier Curve ");
         for (int i = 1; i < interpolationPoints; ++i)
         {
             float t = i / (float)interpolationPoints;
-            positions[i] = CalculateLinearBezierPoint(t, CalculateLinearBezierPoint(t, point0.position, point1.position), CalculateLinearBezierPoint(t, point1.position, point2.position));
-            lineRenderer.SetPositions(positions);
+            positions[i] = CalculateLinearBezierPoint(t, CalculateLinearBezierPoint(t, point0.position, point1.position), CalculateLinearBezierPoint(t, point1.position, point2.position)); 
         }
+        setPositionCounts();
+        lineRenderer.SetPositions(positions);
     }
 
     private Vector3 CalculateLinearBezierPoint(float t, Vector3 p0, Vector3 p1)
