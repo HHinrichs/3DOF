@@ -22,8 +22,8 @@ public class VRRaycaster : MonoBehaviour
     private BezierLineRenderer bezierRenderer;
     public GameObject anglePointPrefab;
     private GameObject anglePointPrefabInstance;
-    public GameObject hitPointCursorPrefab;
-    private GameObject hitPointCursorPrefabInstance;
+    public GameObject cursorHitPointPrefab;
+    private GameObject cursorHitPointPrefabInstance;
     private bool objectIsAttached = false;
 
     private bool tap, swipeLeft, swipeRight, swipeUp, swipeDown;
@@ -31,8 +31,12 @@ public class VRRaycaster : MonoBehaviour
     private Vector2 startTouch, swipeDelta;
 
     private Vector2 oldPosition, newPosition;
-
+    private float startTime, oldTime;
     Rigidbody hitObjectRigidbody;
+    public float speed;
+    private float journeyLength;
+    private float fracJourney;
+    private float hitObjectRigidbodyTmpMass;
     void Awake()
     {
         if (leftHandAnchor == null)
@@ -121,6 +125,7 @@ public class VRRaycaster : MonoBehaviour
 
     void Update()
     {
+
         //this is just for editor testing
         Transform pointer;
         if (testMode)
@@ -132,6 +137,7 @@ public class VRRaycaster : MonoBehaviour
         {
             return;
         }
+
         #region TouchControls
 
         tap = swipeLeft = swipeRight = swipeUp = swipeDown = false;
@@ -212,6 +218,7 @@ public class VRRaycaster : MonoBehaviour
         #endregion
 
         #region AttachControls
+
         if (objectIsAttached == false) {
 
             Ray laserPointer = new Ray(pointer.position, pointer.forward);
@@ -231,32 +238,28 @@ public class VRRaycaster : MonoBehaviour
                 {
                     lineRenderer.SetPosition(1, hit.point);
                 }
+
+                //Instantiating Objects needed
                  if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
                 {
                     Debug.Log("Creating spring anchor...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
-                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.transform.position, Quaternion.identity);
+                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
                     anglePointPrefabInstance.transform.parent = this.transform;
-                    anglePointPrefabInstance.GetComponent<SpringJoint>().connectedBody = hitObject.GetComponent<Rigidbody>();
 
                     Debug.Log("Instantiate hitPointCursor and align it right...");
-                    hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
-                    hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position);
+                    cursorHitPointPrefabInstance = Instantiate(cursorHitPointPrefab, hit.point, Quaternion.identity);
+                    cursorHitPointPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position);
+
+                    // Redundant?
+                    cursorHitPointPrefabInstance.transform.position = hit.point;
+
+                    cursorHitPointPrefabInstance.transform.parent = hitObject;
                     
-                    //hitPointCursorPrefabInstance.transform.localPosition = new Vector3(hitPointCursorPrefabInstance.transform.localPosition.x, 
-                    //                                                                    hitPointCursorPrefabInstance.transform.localPosition.y, 
-                    //                                                                    -(hitObject.position.z*hitObject.localScale.z)/2);
-                    hitPointCursorPrefabInstance.transform.position = hit.point;
-                    hitPointCursorPrefabInstance.transform.parent = hitObject;
-
-                    //        Debug.Log(anglePointPrefabInstance.)
-
-                    Debug.Log("Creating bezier Line point 2 ");
-                    Debug.Log("Creating bezier Point in direction of the GameObject and the controller");
-
-                    //         Instantiate(new GameObject("BezierPoint2"), )
+                    //Removing Mass for the moment..
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
+                    hitObjectRigidbody.useGravity = false;
                 }
 
                 if (raycastHitCallback != null)
@@ -267,15 +270,19 @@ public class VRRaycaster : MonoBehaviour
         }
         else
         {
-            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform, pointer);
+            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, cursorHitPointPrefabInstance.transform, pointer);
 
             if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
                 objectIsAttached = false;
+                hitObjectRigidbody.useGravity = true;
+                hitObjectRigidbody = null;
                 hitObject = null;
                 Destroy(anglePointPrefabInstance);
-                Destroy(hitPointCursorPrefabInstance);
+                Destroy(cursorHitPointPrefabInstance);
+                journeyLength = 0f;
+                fracJourney = 0f;
                 lineRenderer.positionCount = 2;
             }
 
@@ -285,8 +292,17 @@ public class VRRaycaster : MonoBehaviour
 
     void FixedUpdate()
     {
+        if (hitObjectRigidbody != null)
+        {
+            journeyLength = Vector3.Distance(hitObject.position, anglePointPrefabInstance.transform.position);
+            float distCovered = (Time.time - oldTime) * speed;
+            fracJourney = distCovered / journeyLength;
+            Debug.Log("Object is attached and distCovered is " + distCovered);
+            oldTime = Time.time;
+            hitObjectRigidbody.position = Vector3.Lerp(hitObject.position, anglePointPrefabInstance.transform.position, fracJourney);
 
-        if(hitObjectRigidbody != null && enableRotation)
+        }
+        if (hitObjectRigidbody != null && enableRotation)
         {
             hitObjectRigidbody.rotation = this.transform.rotation;
         }
