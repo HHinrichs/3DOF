@@ -249,7 +249,7 @@ public class VRRaycaster : MonoBehaviour
                     Debug.Log("Creating spring anchor...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
-                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
+                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.transform.position, Quaternion.identity);
                     anglePointPrefabInstance.transform.parent = this.transform;
 
                     Debug.Log("Instantiate hitPointCursor and align it right...");
@@ -301,8 +301,11 @@ public class VRRaycaster : MonoBehaviour
 
     float inverse_smoothstep(float x)
     {
-        float a = Mathf.Acos(1.0f - 2.0f * x) / 3.0f;
-        return (1.0f + Mathf.Sin(a) * Mathf.Sqrt(3.0f) - Mathf.Cos(a)) / 2.0f;
+
+        return Mathf.Sin(Mathf.Asin(x * 2.0f - 1.0f) / 3.0f) + 0.5f;
+        // Hard Version
+        // float a = Mathf.Acos(1.0f - 2.0f * x) / 3.0f;
+        // return (1.0f + Mathf.Sin(a) * Mathf.Sqrt(3.0f) - Mathf.Cos(a)) / 2.0f;
     }
 
     void FixedUpdate()
@@ -310,13 +313,16 @@ public class VRRaycaster : MonoBehaviour
         if (hitObjectRigidbody != null)
         {
             journeyLength = Vector3.Distance(hitObject.position, anglePointPrefabInstance.transform.position);
-            float distCovered = (Time.time - oldTime) * speed;
-            fracJourney = distCovered / journeyLength;
-            oldTime = Time.time;
-            vel = (hitObjectRigidbody.position - oldRigidbodyPosition) / Time.deltaTime;
-            oldRigidbodyPosition = hitObjectRigidbody.position;
-            hitObjectRigidbody.position = Vector3.Lerp(hitObject.position, anglePointPrefabInstance.transform.position, inverse_smoothstep(fracJourney));
-
+            Debug.Log(journeyLength);
+            if (journeyLength != 0) { 
+                float distCovered = (Time.time - oldTime);
+                fracJourney = distCovered / journeyLength;
+                oldTime = Time.time;
+                vel = (hitObjectRigidbody.position - oldRigidbodyPosition) / Time.deltaTime;
+                oldRigidbodyPosition = hitObjectRigidbody.position;
+                if (!System.Single.IsNaN(hitObjectRigidbody.position.x) && !System.Single.IsNaN(hitObjectRigidbody.position.y) && !System.Single.IsNaN(hitObjectRigidbody.position.z))
+                    hitObjectRigidbody.position = Vector3.Lerp(hitObject.position, anglePointPrefabInstance.transform.position, inverse_smoothstep(fracJourney)* speed);
+            }
         }
         if (hitObjectRigidbody != null && enableRotation)
         {
