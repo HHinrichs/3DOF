@@ -7,6 +7,8 @@ public class VRRaycaster : MonoBehaviour
     [System.Serializable]
     public class Callback : UnityEvent<Ray, RaycastHit> { }
 
+    public bool testMode = false;
+
     private Transform leftHandAnchor = null;
     private Transform rightHandAnchor = null;
     private Transform centerEyeAnchor = null;
@@ -117,12 +119,14 @@ public class VRRaycaster : MonoBehaviour
         isDragging = false;
     }
 
-    bool tached = false;
     void Update()
     {
         //this is just for editor testing
-        Transform pointer = this.transform;
-        // Transform pointer = Pointer;
+        Transform pointer;
+        if (testMode)
+            pointer = this.transform;
+        else
+            pointer = Pointer;
 
         if (pointer == null)
         {
@@ -227,9 +231,7 @@ public class VRRaycaster : MonoBehaviour
                 {
                     lineRenderer.SetPosition(1, hit.point);
                 }
-                if(Input.GetKeyDown("e"))
-              //          if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null))
-           //    if (tached == false)
+                 if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
                 {
                     Debug.Log("Creating spring anchor...");
                     objectIsAttached = true;
@@ -241,21 +243,19 @@ public class VRRaycaster : MonoBehaviour
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
                     hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position);
+                    
+                    //hitPointCursorPrefabInstance.transform.localPosition = new Vector3(hitPointCursorPrefabInstance.transform.localPosition.x, 
+                    //                                                                    hitPointCursorPrefabInstance.transform.localPosition.y, 
+                    //                                                                    -(hitObject.position.z*hitObject.localScale.z)/2);
+                    hitPointCursorPrefabInstance.transform.position = hit.point;
                     hitPointCursorPrefabInstance.transform.parent = hitObject;
-                    hitPointCursorPrefabInstance.transform.localPosition = new Vector3(hitPointCursorPrefabInstance.transform.localPosition.x, 
-                                                                                        hitPointCursorPrefabInstance.transform.localPosition.y, 
-                                                                                        -(hitObject.position.z*hitObject.localScale.z)/2);
-            //        Debug.Log(anglePointPrefabInstance.)
+
+                    //        Debug.Log(anglePointPrefabInstance.)
 
                     Debug.Log("Creating bezier Line point 2 ");
                     Debug.Log("Creating bezier Point in direction of the GameObject and the controller");
-                    //         Instantiate(new GameObject("BezierPoint2"), )
-                    // maxRayDistance = hit.distance;
 
-  //                  bezierRenderer.setPositionCounts();
-   //                 lineRenderer.SetPosition(0, transform.position);
-   //                 lineRenderer.SetPosition(1, transform.position);
-                    tached = true;
+                    //         Instantiate(new GameObject("BezierPoint2"), )
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
                 }
 
@@ -267,12 +267,9 @@ public class VRRaycaster : MonoBehaviour
         }
         else
         {
-            // bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform);
-            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitObject, pointer);
+            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform, pointer);
 
-            //   hitObjectRigidbody.rotation = this.transform.rotation;
-            if (Input.GetKeyDown("e"))
-     //           if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null))
+            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
                 objectIsAttached = false;
@@ -281,6 +278,7 @@ public class VRRaycaster : MonoBehaviour
                 Destroy(hitPointCursorPrefabInstance);
                 lineRenderer.positionCount = 2;
             }
+
         }
         #endregion
     }
@@ -328,7 +326,6 @@ public class BezierLineRenderer
         point1 = _point1;
         point2 = _point2;
         positions[0] = _pointer.position;
-        //    Debug.Log("Updating Bezier Curve ");
         for (int i = 1; i < interpolationPoints; ++i)
         {
             float t = i / (float)interpolationPoints;
