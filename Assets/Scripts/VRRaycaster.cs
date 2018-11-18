@@ -37,6 +37,10 @@ public class VRRaycaster : MonoBehaviour
     private float journeyLength;
     private float fracJourney;
     private float hitObjectRigidbodyTmpMass;
+
+    private Vector3 vel;
+    private Vector3 oldRigidbodyPosition;
+    private float baseSpeed;
     void Awake()
     {
         if (leftHandAnchor == null)
@@ -257,9 +261,11 @@ public class VRRaycaster : MonoBehaviour
 
                     cursorHitPointPrefabInstance.transform.parent = hitObject;
                     
-                    //Removing Mass for the moment..
+                    //Removing Gravity for the moment..
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
+                    oldRigidbodyPosition = hitObjectRigidbody.position;
                     hitObjectRigidbody.useGravity = false;
+                    speed = calculateSpeedLevel(hitObjectRigidbody);
                 }
 
                 if (raycastHitCallback != null)
@@ -277,6 +283,9 @@ public class VRRaycaster : MonoBehaviour
                 Debug.Log("Removing anchor from object...");
                 objectIsAttached = false;
                 hitObjectRigidbody.useGravity = true;
+
+                hitObjectRigidbody.AddForce(vel, ForceMode.Impulse);
+                
                 hitObjectRigidbody = null;
                 hitObject = null;
                 Destroy(anglePointPrefabInstance);
@@ -290,6 +299,12 @@ public class VRRaycaster : MonoBehaviour
         #endregion
     }
 
+    float inverse_smoothstep(float x)
+    {
+        float a = Mathf.Acos(1.0f - 2.0f * x) / 3.0f;
+        return (1.0f + Mathf.Sin(a) * Mathf.Sqrt(3.0f) - Mathf.Cos(a)) / 2.0f;
+    }
+
     void FixedUpdate()
     {
         if (hitObjectRigidbody != null)
@@ -297,15 +312,33 @@ public class VRRaycaster : MonoBehaviour
             journeyLength = Vector3.Distance(hitObject.position, anglePointPrefabInstance.transform.position);
             float distCovered = (Time.time - oldTime) * speed;
             fracJourney = distCovered / journeyLength;
-            Debug.Log("Object is attached and distCovered is " + distCovered);
             oldTime = Time.time;
-            hitObjectRigidbody.position = Vector3.Lerp(hitObject.position, anglePointPrefabInstance.transform.position, fracJourney);
+            vel = (hitObjectRigidbody.position - oldRigidbodyPosition) / Time.deltaTime;
+            oldRigidbodyPosition = hitObjectRigidbody.position;
+            hitObjectRigidbody.position = Vector3.Lerp(hitObject.position, anglePointPrefabInstance.transform.position, inverse_smoothstep(fracJourney));
 
         }
         if (hitObjectRigidbody != null && enableRotation)
         {
             hitObjectRigidbody.rotation = this.transform.rotation;
         }
+    }
+
+    private float calculateSpeedLevel(Rigidbody hitObject)
+    {
+        if (hitObject.mass <= 0.1)
+            speed = 10;
+        else if (hitObject.mass > 0.1 && hitObject.mass <= 0.3)
+            speed = 8;
+        else if (hitObject.mass > 0.3 && hitObject.mass <= 0.6)
+            speed = 6;
+        else if (hitObject.mass > 0.6 && hitObject.mass <= 0.8)
+            speed = 4;
+        else if (hitObject.mass > 0.8 && hitObject.mass <= 1)
+            speed = 2;
+        else
+            speed = 1;
+        return speed;
     }
 }
 
