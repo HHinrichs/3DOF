@@ -24,6 +24,7 @@ public class VRRaycaster : MonoBehaviour
     private GameObject anglePointPrefabInstance;
     public GameObject hitPointCursorPrefab;
     private GameObject hitPointCursorPrefabInstance;
+    private GameObject bezierPoint2;
     private bool objectIsAttached = false;
 
     private bool tap, swipeLeft, swipeRight, swipeUp, swipeDown;
@@ -233,29 +234,38 @@ public class VRRaycaster : MonoBehaviour
                 }
                  if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
                 {
-                    Debug.Log("Creating spring anchor...");
+
+                    Debug.Log("Object hit, creating dependencies ...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
-                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.transform.position, Quaternion.identity);
-                    anglePointPrefabInstance.transform.parent = this.transform;
-                    anglePointPrefabInstance.GetComponent<SpringJoint>().connectedBody = hitObject.GetComponent<Rigidbody>();
 
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
                     hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position);
-                    
-                    //hitPointCursorPrefabInstance.transform.localPosition = new Vector3(hitPointCursorPrefabInstance.transform.localPosition.x, 
-                    //                                                                    hitPointCursorPrefabInstance.transform.localPosition.y, 
-                    //                                                                    -(hitObject.position.z*hitObject.localScale.z)/2);
-                    hitPointCursorPrefabInstance.transform.position = hit.point;
+                   // hitPointCursorPrefabInstance.transform.position = hit.point;
                     hitPointCursorPrefabInstance.transform.parent = hitObject;
 
-                    //        Debug.Log(anglePointPrefabInstance.)
+                    Debug.Log("Creating spring anchor...");
+                    anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
+                    
+                    Debug.Log("Aligning Spring...");
+                    SpringJoint anglePointPrefabanglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
+                    anglePointPrefabanglePoint.autoConfigureConnectedAnchor = false;
+                    anglePointPrefabanglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
+                    anglePointPrefabanglePoint.anchor = hitPointCursorPrefabInstance.transform.position;
+                    anglePointPrefabanglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
 
-                    Debug.Log("Creating bezier Line point 2 ");
-                    Debug.Log("Creating bezier Point in direction of the GameObject and the controller");
+                    Debug.Log("Calculating collider Box of the hitObject...");
+                    Collider collider = hitObject.GetComponent<Collider>();
+                    Vector3 colliderSize = collider.bounds.size;
 
-                    //         Instantiate(new GameObject("BezierPoint2"), )
+                    Debug.Log("Creating bezierPoint2... ");
+                    bezierPoint2 = Instantiate(new GameObject("bezierPoint2"), hit.point, Quaternion.identity);
+                    bezierPoint2.transform.localScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
+                    bezierPoint2.transform.parent = this.transform;
+                    bezierPoint2.transform.localPosition = bezierPoint2.transform.localPosition + new Vector3(0f, 0f, -colliderSize.z);
+
+                    Debug.Log("Get the rigidbody component...");
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
                 }
 
@@ -267,18 +277,19 @@ public class VRRaycaster : MonoBehaviour
         }
         else
         {
-            bezierRenderer.DrawLinearCurve(transform, anglePointPrefabInstance.transform, hitPointCursorPrefabInstance.transform, pointer);
+            bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
 
             if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
                 objectIsAttached = false;
                 hitObject = null;
+                Destroy(bezierPoint2);
                 Destroy(anglePointPrefabInstance);
                 Destroy(hitPointCursorPrefabInstance);
+                hitObjectRigidbody = null;
                 lineRenderer.positionCount = 2;
             }
-
         }
         #endregion
     }
@@ -289,6 +300,17 @@ public class VRRaycaster : MonoBehaviour
         if(hitObjectRigidbody != null && enableRotation)
         {
             hitObjectRigidbody.rotation = this.transform.rotation;
+        }
+    }
+
+    private void LateUpdate()
+    {
+        if (anglePointPrefabInstance != null)
+        {
+            anglePointPrefabInstance.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            anglePointPrefabInstance.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
+        //    transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
+         //   transform.rotation = Quaternion.Euler(0f, 0f, 0f);
         }
     }
 }
