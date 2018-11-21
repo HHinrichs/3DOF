@@ -32,7 +32,8 @@ public class VRRaycaster : MonoBehaviour
     private Vector2 startTouch, swipeDelta;
 
     private Vector2 oldPosition, newPosition;
-
+    private Quaternion oldRotation = new Quaternion(0, 0, 0, 0);
+    private Vector3 desigredRotation;
     Rigidbody hitObjectRigidbody;
     void Awake()
     {
@@ -92,6 +93,8 @@ public class VRRaycaster : MonoBehaviour
         lineRenderer.endWidth = 0.017f;
         Transform pointer = Pointer;
         bezierRenderer = new BezierLineRenderer(lineRenderer, interpolationPoints);
+
+        oldRotation = this.transform.rotation;
     }
 
     Transform Pointer
@@ -249,11 +252,16 @@ public class VRRaycaster : MonoBehaviour
                     anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
                     
                     Debug.Log("Aligning Spring...");
-                    SpringJoint anglePointPrefabanglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
-                    anglePointPrefabanglePoint.autoConfigureConnectedAnchor = false;
-                    anglePointPrefabanglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
-                    anglePointPrefabanglePoint.anchor = hitPointCursorPrefabInstance.transform.position;
-                    anglePointPrefabanglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
+                    SpringJoint anglePointPrefabAnglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
+                    anglePointPrefabAnglePoint.autoConfigureConnectedAnchor = false;
+                    anglePointPrefabAnglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
+                    anglePointPrefabAnglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
+                    Debug.Log(anglePointPrefabInstance.transform.InverseTransformPoint(hit.point));
+                    anglePointPrefabAnglePoint.anchor = new Vector3(0f, 0f, 0f);
+
+                //           anglePointPrefabAnglePoint.anchor = anglePointPrefabInstance.transform.InverseTransformVector(hit.point);
+                    anglePointPrefabInstance.transform.parent = this.transform;
+
 
                     Debug.Log("Calculating collider Box of the hitObject...");
                     Collider collider = hitObject.GetComponent<Collider>();
@@ -267,6 +275,13 @@ public class VRRaycaster : MonoBehaviour
 
                     Debug.Log("Get the rigidbody component...");
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
+                    hitObjectRigidbody.useGravity = false;
+                    Debug.Log("Freezing Rotations...");
+                    hitObjectRigidbody.drag = 10;
+                    hitObjectRigidbody.freezeRotation = true;
+                    oldRotation = this.transform.rotation;
+
+
                 }
 
                 if (raycastHitCallback != null)
@@ -282,7 +297,10 @@ public class VRRaycaster : MonoBehaviour
             if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
+                hitObjectRigidbody.drag = 2;
+                hitObjectRigidbody.constraints = RigidbodyConstraints.None;
                 objectIsAttached = false;
+                hitObjectRigidbody.useGravity = true;
                 hitObject = null;
                 Destroy(bezierPoint2);
                 Destroy(anglePointPrefabInstance);
@@ -299,18 +317,9 @@ public class VRRaycaster : MonoBehaviour
 
         if(hitObjectRigidbody != null && enableRotation)
         {
-            hitObjectRigidbody.rotation = this.transform.rotation;
-        }
-    }
-
-    private void LateUpdate()
-    {
-        if (anglePointPrefabInstance != null)
-        {
-            anglePointPrefabInstance.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
-            anglePointPrefabInstance.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
-        //    transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
-         //   transform.rotation = Quaternion.Euler(0f, 0f, 0f);
+            Quaternion deltaRotation = this.transform.rotation * Quaternion.Inverse(oldRotation);
+            hitObjectRigidbody.rotation = deltaRotation * hitObjectRigidbody.rotation;  
+            oldRotation = this.transform.rotation;
         }
     }
 }

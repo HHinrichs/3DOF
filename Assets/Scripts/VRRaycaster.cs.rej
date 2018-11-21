@@ -1,0 +1,19 @@
+diff a/Assets/Scripts/VRRaycaster.cs b/Assets/Scripts/VRRaycaster.cs	(rejected hunks)
+@@ -302,6 +302,17 @@
+             hitObjectRigidbody.rotation = this.transform.rotation;
+         }
+     }
++
++    private void LateUpdate()
++    {
++        if (anglePointPrefabInstance != null)
++        {
++            anglePointPrefabInstance.transform.rotation = Quaternion.Euler(0f, 0f, 0f);
++            anglePointPrefabInstance.transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
++        //    transform.localRotation = Quaternion.Euler(0f, 0f, 0f);
++         //   transform.rotation = Quaternion.Euler(0f, 0f, 0f);
++        }
++    }
+ }
+ 
+ public class BezierLineRenderer
