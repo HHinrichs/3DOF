@@ -25,11 +25,14 @@ public class VRRaycaster : MonoBehaviour
     public GameObject hitPointCursorPrefab;
     private GameObject hitPointCursorPrefabInstance;
     private GameObject bezierPoint2;
+    public GameObject bezierPoint2Prefab;
     private bool objectIsAttached = false;
 
     private bool tap, swipeLeft, swipeRight, swipeUp, swipeDown;
     private bool isDragging;
     private Vector2 startTouch, swipeDelta;
+
+    private Vector3 colliderSize;
 
     private Vector2 oldPosition, newPosition;
     private Quaternion oldRotation = new Quaternion(0, 0, 0, 0);
@@ -72,13 +75,6 @@ public class VRRaycaster : MonoBehaviour
             lineRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             lineRenderer.receiveShadows = false;
             lineRenderer.widthMultiplier = 0.02f;
-            Color c1 = Color.white;
-            Color c2 = new Color(1, 1, 1, 1);
-            lineRenderer.material = new Material(Shader.Find("Sprites/Default"));
-            lineRenderer.startColor = c2;
-            lineRenderer.endColor = c1;
-            lineRenderer.startWidth = 0.017f;
-            lineRenderer.endWidth = 0.017f;
         }
     }
 
@@ -90,7 +86,7 @@ public class VRRaycaster : MonoBehaviour
         lineRenderer.startColor = c2;
         lineRenderer.endColor = c1;
         lineRenderer.startWidth = 0.017f;
-        lineRenderer.endWidth = 0.017f;
+        lineRenderer.endWidth = 0.005f;
         Transform pointer = Pointer;
         bezierRenderer = new BezierLineRenderer(lineRenderer, interpolationPoints);
 
@@ -167,7 +163,7 @@ public class VRRaycaster : MonoBehaviour
         }
         
         // Deadzone Crossing
-        if (swipeDelta.magnitude > 0f)
+        if (swipeDelta.magnitude > 0f && hitObjectRigidbody != null)
         {
             // Which Direction?
             float x = swipeDelta.x;
@@ -186,26 +182,50 @@ public class VRRaycaster : MonoBehaviour
             }
             else
             {
+                float predictedDistance = Vector3.Distance(transform.TransformPoint(anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * 2), this.transform.position );
+                Vector3 predictedPosition = anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * 2;
+
+                Debug.Log("PredictiveDistance " + predictedDistance);
+                Debug.Log("ColliderSize.z " + colliderSize.z);
+
+                float percentageDistanceAB = Vector3.Distance(this.transform.position,bezierPoint2.transform.position) / Vector3.Distance(this.transform.position, anglePointPrefabInstance.transform.position);
                 if (y < 0)
                 {
                     swipeDown = true;
-                    if(anglePointPrefabInstance != null)
+                    if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
                     {
-                        Debug.Log(y+" "+ swipeDelta.magnitude);
+
+                        Debug.Log(y + " " + swipeDelta.magnitude);
                         Debug.Log("y < 0");
-                        anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y)*2;
+                        if(predictedDistance >= colliderSize.z && predictedPosition.z > 0)
+                        {
+                            anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * 2;
+                            bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * percentageDistanceAB) * 2;
+                        }
+                        else
+                        {
+                            anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, colliderSize.z);
+                            bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, colliderSize.z * percentageDistanceAB);
+                        }
+                               
                     }
-                        
-                    
+
                 }
                 else
                 {
                     swipeUp = true;
-                    if (anglePointPrefabInstance != null)
+                    if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
                     {
-                        Debug.Log(y+ " " + swipeDelta.magnitude);
-                        Debug.Log("y > 0");
-                        anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * 2;
+                        if (predictedDistance >= colliderSize.z && predictedPosition.z > 0)
+                        {
+                            anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * 2;
+                            bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * percentageDistanceAB) * 2;
+                        }
+                        else
+                        {
+                            anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, colliderSize.z);
+                            bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, colliderSize.z * percentageDistanceAB);
+                        }
                     }
 
                 }
@@ -245,7 +265,6 @@ public class VRRaycaster : MonoBehaviour
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
                     hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position);
-                   // hitPointCursorPrefabInstance.transform.position = hit.point;
                     hitPointCursorPrefabInstance.transform.parent = hitObject;
 
                     Debug.Log("Creating spring anchor...");
@@ -256,29 +275,39 @@ public class VRRaycaster : MonoBehaviour
                     anglePointPrefabAnglePoint.autoConfigureConnectedAnchor = false;
                     anglePointPrefabAnglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
                     anglePointPrefabAnglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
-                    Debug.Log(anglePointPrefabInstance.transform.InverseTransformPoint(hit.point));
                     anglePointPrefabAnglePoint.anchor = new Vector3(0f, 0f, 0f);
-
-                //           anglePointPrefabAnglePoint.anchor = anglePointPrefabInstance.transform.InverseTransformVector(hit.point);
                     anglePointPrefabInstance.transform.parent = this.transform;
 
 
                     Debug.Log("Calculating collider Box of the hitObject...");
                     Collider collider = hitObject.GetComponent<Collider>();
-                    Vector3 colliderSize = collider.bounds.size;
+                    colliderSize = collider.bounds.size;
+                    Debug.Log("Size of collider " + colliderSize.z);
 
                     Debug.Log("Creating bezierPoint2... ");
-                    bezierPoint2 = Instantiate(new GameObject("bezierPoint2"), hit.point, Quaternion.identity);
-                    bezierPoint2.transform.localScale = new Vector3(0.0001f, 0.0001f, 0.0001f);
+                    bezierPoint2 = Instantiate(bezierPoint2Prefab, hit.point, Quaternion.identity);
+                    bezierPoint2.transform.localScale = new Vector3(0.1f, 0.1f, 0.1f);
                     bezierPoint2.transform.parent = this.transform;
+                    Vector3 originPosition = bezierPoint2.transform.localPosition;
                     bezierPoint2.transform.localPosition = bezierPoint2.transform.localPosition + new Vector3(0f, 0f, -colliderSize.z);
+
+                    Debug.Log("Calibrating bezierPoint2...");
+                    while (bezierPoint2.transform.localPosition.z <= 0 )
+                    {
+                        float distanceBetweenPoints = Vector3.Distance(originPosition, bezierPoint2.transform.localPosition);
+                        float halfDistanceBetweenPoints = distanceBetweenPoints / 2;
+                        bezierPoint2.transform.localPosition = bezierPoint2.transform.localPosition + new Vector3(0f, 0f, halfDistanceBetweenPoints);
+                    }
+                        
 
                     Debug.Log("Get the rigidbody component...");
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
-                    hitObjectRigidbody.useGravity = false;
-                    Debug.Log("Freezing Rotations...");
+                    
+                    Debug.Log("Tweaking the Rigidbody...");
+                    hitObjectRigidbody.useGravity = true;
                     hitObjectRigidbody.drag = 10;
                     hitObjectRigidbody.freezeRotation = true;
+
                     oldRotation = this.transform.rotation;
 
 
@@ -293,7 +322,6 @@ public class VRRaycaster : MonoBehaviour
         else
         {
             bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
-
             if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
