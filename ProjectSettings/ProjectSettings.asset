@@ -151,7 +151,7 @@ PlayerSettings:
   androidSupportedAspectRatio: 1
   androidMaxAspectRatio: 2.1
   applicationIdentifier:
-    Android: com.senselab.dof
+    Android: com.senselab.dof_rotation
     Standalone: com.senselab.dof
     WebGL: com.oculus.UnitySample
     iOS: com.oculus.UnitySample
