@@ -14,6 +14,7 @@
 
 using UnityEngine;
 using System.Collections;
+using System;
 
 /// Represents an object tracked by controller input.
 /// Manages the active status of the tracked controller based on controller connection status.
@@ -74,8 +75,13 @@ public class GvrTrackedController : MonoBehaviour {
     }
   }
 
-  /// Is the object's active status determined by the controller connection status.
-  public bool IsDeactivatedWhenDisconnected {
+    public static explicit operator GvrTrackedController(GameObject v)
+    {
+        throw new NotImplementedException();
+    }
+
+    /// Is the object's active status determined by the controller connection status.
+    public bool IsDeactivatedWhenDisconnected {
     get {
       return isDeactivatedWhenDisconnected;
     }

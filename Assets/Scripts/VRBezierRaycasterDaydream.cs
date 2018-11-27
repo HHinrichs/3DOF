@@ -36,7 +36,8 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
     [Tooltip("The LineRenderer instance of the GO")]
     public LineRenderer lineRenderer = null;
 
-    private Transform controllerAnchor = null;
+    public GvrTrackedController trackedController;
+
     private Transform hitObject;
     private BezierLineRenderer bezierRenderer;
     public LayerMask excludeLayers;
@@ -64,13 +65,14 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
 
     void Awake()
     {
-        if (controllerAnchor == null)
+        if (trackedController == null)
         {
             Debug.LogWarning("Assign controller");
-            GameObject left = GameObject.Find("controllerVisual");
+            GvrTrackedController left = (GvrTrackedController)GameObject.Find("GvrControllerPointer");
             if (left != null)
             {
-                controllerAnchor = left.transform;
+                trackedController = left;
+                Debug.Log("FOUND!");
             }
         }
         
@@ -99,15 +101,13 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         oldRotation = this.transform.rotation;
     }
 
-    GvrControllerInputDevice ControllerInputDevice { get; set; }
-
     Transform Pointer
     {
         get
         {
-            if (ControllerInputDevice != null)
+            if (trackedController != null)
             {
-                return controllerAnchor;
+                return trackedController.transform;
             }
             Debug.Log("No Controller found ...");
             return null;
@@ -123,7 +123,6 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
 
     void Update()
     {
-        Debug.Log(ControllerInputDevice.GetButton(GvrControllerButton.TouchPadButton));
         //this is just for editor testing
         Transform pointer;
         if (testMode)
@@ -139,16 +138,16 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
 
         tap = swipeLeft = swipeRight = swipeUp = swipeDown = false;
         
-        if (OVRInput.Get(OVRInput.Touch.One))
+        if (trackedController.ControllerInputDevice.GetButton(GvrControllerButton.TouchPadTouch))
         {
-            startTouch = OVRInput.Get(OVRInput.Axis2D.PrimaryTouchpad);
+            startTouch = trackedController.ControllerInputDevice.TouchPos;
             if (!isDragging)
             {
                 oldPosition = startTouch;
             }
             isDragging = true;
         }
-        if (OVRInput.GetUp(OVRInput.Touch.One))
+        if(trackedController.ControllerInputDevice.GetButtonUp(GvrControllerButton.TouchPadTouch))
         {
             isDragging = false;
             Reset();
@@ -159,7 +158,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         // Distance Calculation
         if(isDragging)
         {
-            if (OVRInput.Get(OVRInput.Touch.One))
+            if (trackedController.ControllerInputDevice.GetButton(GvrControllerButton.TouchPadTouch))
             {
                 swipeDelta = startTouch - oldPosition;
             }
@@ -253,7 +252,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
                     lineRenderer.SetPosition(1, hit.point);
                 }
 
-                 if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
+                 if(trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
                 {
 
                     Debug.Log("Object hit, creating dependencies ...");
@@ -314,7 +313,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         else
         {
             bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
-            if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
+            if (trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
                 hitObjectRigidbody.drag = 2;
