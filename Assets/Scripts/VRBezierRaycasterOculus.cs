@@ -68,9 +68,9 @@ public class VRBezierRaycasterOculus : MonoBehaviour
     private Vector3 desigredRotation;
 
     private Rigidbody hitObjectRigidbody;
-
-
-
+    private SpringJoint anglePointPrefabAnglePoint;
+    private GameObject tempGameObject;
+    private Transform originalParentTransform;
     void Awake()
     {
         if (leftHandAnchor == null)
@@ -294,29 +294,35 @@ public class VRBezierRaycasterOculus : MonoBehaviour
                     lineRenderer.SetPosition(1, hit.point);
                 }
 
-                 if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
+                 if(OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode && (hit.rigidbody != null)) )
                 {
 
                     Debug.Log("Object hit, creating dependencies ...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
 
+                    originalParentTransform = hitObject.parent;
+                    tempGameObject = new GameObject("Temporary GameObject");
+                    tempGameObject.transform.position = hitObject.position;
+                    tempGameObject.transform.rotation = hitObject.rotation;
+                    tempGameObject.transform.parent = hitObject.parent;
+                    hitObject.parent = tempGameObject.transform;
+                    
+
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
                     hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hit.point);
-                    //hitPointCursorPrefabInstance.transform.localScale = new Vector3(hitPointCursorPrefabInstance.transform.localScale.x / hitObject.transform.localScale.x,
-                    //                                                            hitPointCursorPrefabInstance.transform.localScale.y / hitObject.transform.localScale.y,
-                    //                                                            hitPointCursorPrefabInstance.transform.localScale.z / hitObject.transform.localScale.z);
-                    hitPointCursorPrefabInstance.transform.parent = hitObject;
+                    hitPointCursorPrefabInstance.transform.parent = tempGameObject.transform;
 
                     Debug.Log("Creating spring anchor...");
                     anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
                     
                     Debug.Log("Aligning Spring...");
-                    SpringJoint anglePointPrefabAnglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
+                    anglePointPrefabAnglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
                     anglePointPrefabAnglePoint.autoConfigureConnectedAnchor = false;
                     anglePointPrefabAnglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
-                    anglePointPrefabAnglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
+                    
+                    anglePointPrefabAnglePoint.connectedAnchor = hit.transform.InverseTransformPoint(hit.point);
                     anglePointPrefabAnglePoint.spring = springForce;
                     anglePointPrefabAnglePoint.damper = damperForce;
                     anglePointPrefabAnglePoint.minDistance = minDistance;
@@ -363,16 +369,22 @@ public class VRBezierRaycasterOculus : MonoBehaviour
         else
         {
             bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
-            hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hitPointCursorPrefabInstance.transform.position);
 
+            // Take the transform of the hitObject, and look where is connected Anchor of it is. Then transform the point into worldspace and set the hitobjectCursorPrefabInstance to its position.
+            hitPointCursorPrefabInstance.transform.position = hitObject.TransformPoint(anglePointPrefabAnglePoint.connectedAnchor);
+            // Set the Rotation of the hitPointCursorPrefabInstance
+            hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hitPointCursorPrefabInstance.transform.position);
             if (OVRInput.GetDown(OVRInput.Button.PrimaryIndexTrigger) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
+                hitObject.parent = originalParentTransform;
                 hitObjectRigidbody.drag = 2;
                 hitObjectRigidbody.constraints = RigidbodyConstraints.None;
                 objectIsAttached = false;
                 hitObjectRigidbody.useGravity = true;
                 hitObject = null;
+                originalParentTransform = null;
+                Destroy(tempGameObject);
                 Destroy(bezierPoint2);
                 Destroy(anglePointPrefabInstance);
                 Destroy(hitPointCursorPrefabInstance);
@@ -394,5 +406,6 @@ public class VRBezierRaycasterOculus : MonoBehaviour
             oldRotation = this.transform.rotation;
         }
     }
+
 }
 

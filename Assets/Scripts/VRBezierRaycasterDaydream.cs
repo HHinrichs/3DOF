@@ -69,8 +69,9 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
     private Vector3 desigredRotation;
 
     private Rigidbody hitObjectRigidbody;
-
-
+    private SpringJoint anglePointPrefabAnglePoint;
+    private Transform originalParentTransform;
+    private GameObject tempGameObject;
 
     void Awake()
     {
@@ -264,26 +265,35 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
                     lineRenderer.SetPosition(1, hit.point);
                 }
 
-                 if(trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode ) )
+                 if(trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hit.rigidbody != null) || (Input.GetKeyDown("e") && testMode && (hit.rigidbody != null)) )
                 {
 
                     Debug.Log("Object hit, creating dependencies ...");
                     objectIsAttached = true;
                     hitObject = hit.transform;
 
+                    originalParentTransform = hitObject.parent;
+                    tempGameObject = new GameObject("Temporary GameObject");
+                    tempGameObject.transform.position = hitObject.position;
+                    tempGameObject.transform.rotation = hitObject.rotation;
+                    tempGameObject.transform.parent = hitObject.parent;
+                    hitObject.parent = tempGameObject.transform;
+
+
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
                     hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hit.point);
-                    hitPointCursorPrefabInstance.transform.parent = hitObject;
+                    hitPointCursorPrefabInstance.transform.parent = tempGameObject.transform;
 
                     Debug.Log("Creating spring anchor...");
                     anglePointPrefabInstance = Instantiate(anglePointPrefab, hit.point, Quaternion.identity);
-                    
+
                     Debug.Log("Aligning Spring...");
-                    SpringJoint anglePointPrefabAnglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
+                    anglePointPrefabAnglePoint = anglePointPrefabInstance.GetComponent<SpringJoint>();
                     anglePointPrefabAnglePoint.autoConfigureConnectedAnchor = false;
                     anglePointPrefabAnglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
-                    anglePointPrefabAnglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
+
+                    anglePointPrefabAnglePoint.connectedAnchor = hit.transform.InverseTransformPoint(hit.point);
                     anglePointPrefabAnglePoint.spring = springForce;
                     anglePointPrefabAnglePoint.damper = damperForce;
                     anglePointPrefabAnglePoint.minDistance = minDistance;
@@ -330,6 +340,9 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         else
         {
             bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
+            // Take the transform of the hitObject, and look where is connected Anchor of it is. Then transform the point into worldspace and set the hitobjectCursorPrefabInstance to its position.
+            hitPointCursorPrefabInstance.transform.position = hitObject.TransformPoint(anglePointPrefabAnglePoint.connectedAnchor);
+            // Set the Rotation of the hitPointCursorPrefabInstance
             hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hitPointCursorPrefabInstance.transform.position);
             if (trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
