@@ -20,11 +20,18 @@ public class VRBezierRaycasterOculus : MonoBehaviour
     // Offset the Grabed Object is close to me. It is recommended to set the factor that the Asset does not get clipped into the Camera
     [Tooltip("Offset from near Object to controller")]
     public float closeOffset = 0.0f;
+    [Tooltip("The Drag used while Objects are attached")]
+    public float attachDrag = 10;
+    [Tooltip("The Drag used while Objects are NOT attached")]
+    public float restDrag = 2;
+
     [Header("Modes")]
     [Tooltip("Enable editor Testing. 'e' Button for anchoring the Object")]
     public bool testMode = false;
     [Tooltip("Enables rotation of the Object")]
     public bool enableRotation = false;
+    [Tooltip("Use Gravity while holding")]
+    public bool useGravity = true;
 
     [Header("Prefabs")]
     [Tooltip("Prefab for the attachment Point")]
@@ -35,6 +42,7 @@ public class VRBezierRaycasterOculus : MonoBehaviour
     public GameObject hitPointCursorPrefab;
     [Tooltip("The LineRenderer instance of the GO")]
     public LineRenderer lineRenderer = null;
+    
 
     [Header("Spring Joint settings")]
     public float springForce = 50;
@@ -353,8 +361,8 @@ public class VRBezierRaycasterOculus : MonoBehaviour
                     hitObjectRigidbody = hitObject.GetComponent<Rigidbody>();
                     
                     Debug.Log("Tweaking the Rigidbody...");
-                    hitObjectRigidbody.useGravity = true;
-                    hitObjectRigidbody.drag = 10;
+                    hitObjectRigidbody.useGravity = useGravity;
+                    hitObjectRigidbody.drag = attachDrag;
                     hitObjectRigidbody.freezeRotation = true;
 
                     oldRotation = this.transform.rotation;
@@ -378,7 +386,7 @@ public class VRBezierRaycasterOculus : MonoBehaviour
             {
                 Debug.Log("Removing anchor from object...");
                 hitObject.parent = originalParentTransform;
-                hitObjectRigidbody.drag = 2;
+                hitObjectRigidbody.drag = restDrag;
                 hitObjectRigidbody.constraints = RigidbodyConstraints.None;
                 objectIsAttached = false;
                 hitObjectRigidbody.useGravity = true;
