@@ -36,10 +36,19 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
     [Tooltip("The LineRenderer instance of the GO")]
     public LineRenderer lineRenderer = null;
 
+    [Header("Spring Joint settings")]
+    public float springForce = 50;
+    public float damperForce = 2;
+    public float minDistance = 0;
+    public float maxDistance = 0.01f;
+    public float tolerance = 0.025f;
+
     public GvrTrackedController trackedController;
 
     private Transform hitObject;
     private BezierLineRenderer bezierRenderer;
+
+    [Header("Exclude Layers")]
     public LayerMask excludeLayers;
     public VRBezierRaycasterDaydream.Callback raycastHitCallback;
     
@@ -136,98 +145,101 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         }
         #region TouchControls
 
-        tap = swipeLeft = swipeRight = swipeUp = swipeDown = false;
+        if(hitObjectRigidbody != null)
+        {
+            tap = swipeLeft = swipeRight = swipeUp = swipeDown = false;
         
-        if (trackedController.ControllerInputDevice.GetButton(GvrControllerButton.TouchPadTouch))
-        {
-            startTouch = trackedController.ControllerInputDevice.TouchPos;
-            if (!isDragging)
-            {
-                oldPosition = startTouch;
-            }
-            isDragging = true;
-        }
-        if(trackedController.ControllerInputDevice.GetButtonUp(GvrControllerButton.TouchPadTouch))
-        {
-            isDragging = false;
-            Reset();
-        }
-
-        swipeDelta = new Vector2(0f, 0f);
-
-        // Distance Calculation
-        if(isDragging)
-        {
             if (trackedController.ControllerInputDevice.GetButton(GvrControllerButton.TouchPadTouch))
             {
-                swipeDelta = startTouch - oldPosition;
+                startTouch = trackedController.ControllerInputDevice.TouchPos;
+                if (!isDragging)
+                {
+                    oldPosition = startTouch;
+                }
+                isDragging = true;
             }
-        }
+            if(trackedController.ControllerInputDevice.GetButtonUp(GvrControllerButton.TouchPadTouch))
+            {
+                isDragging = false;
+                Reset();
+            }
+
+            swipeDelta = new Vector2(0f, 0f);
+
+            // Distance Calculation
+            if(isDragging)
+            {
+                if (trackedController.ControllerInputDevice.GetButton(GvrControllerButton.TouchPadTouch))
+                {
+                    swipeDelta = startTouch - oldPosition;
+                }
+            }
         
-        // Deadzone Crossing
-        if (swipeDelta.magnitude > 0f && hitObjectRigidbody != null)
-        {
-            // Which Direction?
-            float x = swipeDelta.x;
-            float y = swipeDelta.y;
-            if(Mathf.Abs(x) > Mathf.Abs(y))
+            // Deadzone Crossing
+            if (swipeDelta.magnitude > 0f)
             {
-                if (x < 0)
+                // Which Direction?
+                float x = swipeDelta.x;
+                float y = swipeDelta.y;
+                if(Mathf.Abs(x) > Mathf.Abs(y))
                 {
-                    swipeLeft = true;
-                }
-                   
-                else{
-                    swipeRight = true;
-                }
-                    
-            }
-            else
-            {
-                float predictedDistance = Vector3.Distance(transform.TransformPoint(anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * zoomFactor), this.transform.position );
-                Vector3 predictedPosition = anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * zoomFactor;
-
-                if (y < 0)
-                {
-                    swipeDown = true;
-                    if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
+                    if (x < 0)
                     {
-
-                        if(predictedDistance >= (colliderSize.z/2) && predictedPosition.z > 0)
-                        {
-                            anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * zoomFactor;
-                            bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * (bezierPoint2PercentualPosition / 100) ) * zoomFactor;
-                        }
-                        else
-                        {
-                            anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, (colliderSize.z / 2) + closeOffset);
-                            bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, anglePointPrefabInstance.transform.localPosition.z * (bezierPoint2PercentualPosition / 100) );
-                        }
-                               
+                        swipeLeft = true;
                     }
-
+                   
+                    else{
+                        swipeRight = true;
+                    }
+                    
                 }
                 else
                 {
-                    swipeUp = true;
-                    if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
+                    float predictedDistance = Vector3.Distance(transform.TransformPoint(anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * zoomFactor), this.transform.position );
+                    Vector3 predictedPosition = anglePointPrefabInstance.transform.localPosition + new Vector3(0f, 0f, y) * zoomFactor;
+
+                    if (y < 0)
                     {
-                        if (predictedDistance >= (colliderSize.z / 2)+closeOffset && predictedPosition.z > 0)
+                        swipeDown = true;
+                        if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
                         {
-                            anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * zoomFactor;
-                            bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * (bezierPoint2PercentualPosition / 100)) * zoomFactor;
+
+                            if(predictedDistance >= (colliderSize.z/2) && predictedPosition.z > 0)
+                            {
+                                anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * zoomFactor;
+                                bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * (bezierPoint2PercentualPosition / 100) ) * zoomFactor;
+                            }
+                            else
+                            {
+                                anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, (colliderSize.z / 2) + closeOffset);
+                                bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, anglePointPrefabInstance.transform.localPosition.z * (bezierPoint2PercentualPosition / 100) );
+                            }
+                               
                         }
-                        else
-                        {
-                            anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, (colliderSize.z / 2) + closeOffset);
-                            bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, anglePointPrefabInstance.transform.localPosition.z * (bezierPoint2PercentualPosition / 100));
-                        }
+
                     }
+                    else
+                    {
+                        swipeUp = true;
+                        if (anglePointPrefabInstance != null && hitObjectRigidbody != null)
+                        {
+                            if (predictedDistance >= (colliderSize.z / 2)+closeOffset && predictedPosition.z > 0)
+                            {
+                                anglePointPrefabInstance.transform.localPosition += new Vector3(0f, 0f, y) * zoomFactor;
+                                bezierPoint2.transform.localPosition += new Vector3(0f, 0f, y * (bezierPoint2PercentualPosition / 100)) * zoomFactor;
+                            }
+                            else
+                            {
+                                anglePointPrefabInstance.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, (colliderSize.z / 2) + closeOffset);
+                                bezierPoint2.transform.localPosition = this.transform.localPosition + new Vector3(0f, 0f, anglePointPrefabInstance.transform.localPosition.z * (bezierPoint2PercentualPosition / 100));
+                            }
+                        }
 
+                    }
                 }
-            }
 
-        Reset();
+            Reset();
+            }
         }
         #endregion
 
@@ -261,7 +273,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
 
                     Debug.Log("Instantiate hitPointCursor and align it right...");
                     hitPointCursorPrefabInstance = Instantiate(hitPointCursorPrefab, hit.point, Quaternion.identity);
-                    hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hitPointCursorPrefab.transform.position);
+                    hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hit.point);
                     hitPointCursorPrefabInstance.transform.parent = hitObject;
 
                     Debug.Log("Creating spring anchor...");
@@ -272,6 +284,11 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
                     anglePointPrefabAnglePoint.autoConfigureConnectedAnchor = false;
                     anglePointPrefabAnglePoint.connectedBody = hitObject.GetComponent<Rigidbody>();
                     anglePointPrefabAnglePoint.connectedAnchor = hitPointCursorPrefabInstance.transform.localPosition;
+                    anglePointPrefabAnglePoint.spring = springForce;
+                    anglePointPrefabAnglePoint.damper = damperForce;
+                    anglePointPrefabAnglePoint.minDistance = minDistance;
+                    anglePointPrefabAnglePoint.maxDistance = maxDistance;
+                    anglePointPrefabAnglePoint.tolerance = tolerance;
                     anglePointPrefabAnglePoint.anchor = new Vector3(0f, 0f, 0f);
                     anglePointPrefabInstance.transform.parent = this.transform;
                     anglePointPrefabInstance.transform.localScale = new Vector3(0.02f, 0.02f, 0.02f);
@@ -313,6 +330,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
         else
         {
             bezierRenderer.DrawLinearCurve(transform, bezierPoint2.transform, hitPointCursorPrefabInstance.transform, pointer);
+            hitPointCursorPrefabInstance.transform.rotation = Quaternion.LookRotation(this.transform.position - hitPointCursorPrefabInstance.transform.position);
             if (trackedController.ControllerInputDevice.GetButtonDown(GvrControllerButton.TouchPadButton) == true && (hitObject != null) || (Input.GetKeyDown("e") && testMode))
             {
                 Debug.Log("Removing anchor from object...");
@@ -326,6 +344,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
                 Destroy(hitPointCursorPrefabInstance);
                 hitObjectRigidbody = null;
                 lineRenderer.positionCount = 2;
+                isDragging = false;
             }
         }
         #endregion
@@ -336,6 +355,7 @@ public class VRBezierRaycasterDaydream : MonoBehaviour
 
         if(hitObjectRigidbody != null && enableRotation)
         {
+            
             Quaternion deltaRotation = this.transform.rotation * Quaternion.Inverse(oldRotation);
             hitObjectRigidbody.rotation = deltaRotation * hitObjectRigidbody.rotation;  
             oldRotation = this.transform.rotation;
